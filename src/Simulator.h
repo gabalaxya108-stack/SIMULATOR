@@ -9,6 +9,9 @@ public:
     // Executes three-address instructions using a simple default variable table.
     static void simulateThreeAddressCode(const std::vector<std::string>& instructions);
 
+    // Executes two-address instructions using a simple R1-based register model.
+    static void simulateTwoAddressCode(const std::vector<std::string>& instructions);
+
 private:
     // Returns a default value for a variable when no explicit value is provided.
     static int defaultValueForVariable(char variableName);

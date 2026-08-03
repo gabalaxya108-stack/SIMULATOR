@@ -1,7 +1,7 @@
 #include "Simulator.h"
 
-#include <iomanip>
 #include <iostream>
+#include <sstream>
 
 namespace {
 
@@ -41,6 +41,41 @@ void printState(const std::vector<std::pair<std::string, int>>& values) {
 	}
 
 	std::cout << std::endl;
+}
+
+// Prints the current register and temporary state after each two-address instruction.
+void printTwoAddressState(int registerValue, const std::vector<std::pair<std::string, int>>& values) {
+	std::cout << "Current R1: " << registerValue;
+
+	if (!values.empty()) {
+		std::cout << " | Temps: ";
+		for (std::size_t index = 0; index < values.size(); ++index) {
+			std::cout << values[index].first << '=' << values[index].second;
+			if (index + 1 < values.size()) {
+				std::cout << " ";
+			}
+		}
+	}
+
+	std::cout << std::endl;
+}
+
+// Resolves a token for the two-address simulator.
+int resolveTwoAddressToken(const std::string& token, int registerValue, const std::vector<std::pair<std::string, int>>& values) {
+	if (token == "R1") {
+		return registerValue;
+	}
+
+	int storedValue = 0;
+	if (findValue(values, token, storedValue)) {
+		return storedValue;
+	}
+
+	if (token.size() == 1 && token[0] >= 'a' && token[0] <= 'z') {
+		return (token[0] - 'a') + 1;
+	}
+
+	return 0;
 }
 
 } // namespace
@@ -112,5 +147,69 @@ void Simulator::simulateThreeAddressCode(const std::vector<std::string>& instruc
 		std::cout << instruction << std::endl;
 		std::cout << "  " << destination << " = " << resultValue << std::endl;
 		printState(values);
+	}
+}
+
+void Simulator::simulateTwoAddressCode(const std::vector<std::string>& instructions) {
+	std::vector<std::pair<std::string, int>> values;
+	int registerValue = 0;
+
+	std::cout << "Two Address Simulation:" << std::endl;
+
+	for (const std::string& instruction : instructions) {
+		std::istringstream stream(instruction);
+		std::string operation;
+		std::string destination;
+		std::string source;
+
+		stream >> operation >> destination;
+
+		if (operation == "MOV") {
+			std::size_t commaPosition = destination.find(',');
+			if (commaPosition == std::string::npos) {
+				continue;
+			}
+
+			std::string target = destination.substr(0, commaPosition);
+			source = destination.substr(commaPosition + 1);
+
+			int sourceValue = resolveTwoAddressToken(source, registerValue, values);
+
+			if (target == "R1") {
+				registerValue = sourceValue;
+			} else {
+				setValue(values, target, sourceValue);
+			}
+		} else if (operation == "ADD" || operation == "SUB" || operation == "MUL" || operation == "DIV") {
+			std::size_t commaPosition = destination.find(',');
+			if (commaPosition == std::string::npos) {
+				continue;
+			}
+
+			source = destination.substr(commaPosition + 1);
+			int sourceValue = resolveTwoAddressToken(source, registerValue, values);
+
+			switch (operation[0]) {
+			case 'A':
+				registerValue += sourceValue;
+				break;
+			case 'S':
+				registerValue -= sourceValue;
+				break;
+			case 'M':
+				registerValue *= sourceValue;
+				break;
+			case 'D':
+				registerValue = sourceValue == 0 ? 0 : registerValue / sourceValue;
+				break;
+			default:
+				break;
+			}
+		} else {
+			continue;
+		}
+
+		std::cout << instruction << std::endl;
+		printTwoAddressState(registerValue, values);
 	}
 }

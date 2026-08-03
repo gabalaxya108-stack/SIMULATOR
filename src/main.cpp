@@ -39,6 +39,8 @@ int main() {
         std::cout << instruction << std::endl;
     }
 
+    Simulator::simulateTwoAddressCode(twoAddressInstructions);
+
     std::vector<std::string> oneAddressInstructions = InstructionGenerator::generateOneAddressCode(postfixExpression);
     std::cout << "One Address Code:" << std::endl;
     for (const std::string& instruction : oneAddressInstructions) {
