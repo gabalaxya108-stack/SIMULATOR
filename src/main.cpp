@@ -1,4 +1,5 @@
 #include <iostream>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -56,6 +57,96 @@ int main() {
     }
 
     Simulator::simulateZeroAddressCode(zeroAddressInstructions);
+
+    auto collectTemporaryVariables = [](const std::vector<std::string>& instructions) {
+        std::set<std::string> temporaryVariables;
+
+        for (const std::string& instruction : instructions) {
+            std::size_t firstTemporaryPosition = instruction.find('t');
+            while (firstTemporaryPosition != std::string::npos) {
+                std::size_t nextPosition = firstTemporaryPosition + 1;
+                while (nextPosition < instruction.size() && instruction[nextPosition] >= '0' && instruction[nextPosition] <= '9') {
+                    ++nextPosition;
+                }
+
+                if (nextPosition > firstTemporaryPosition + 1) {
+                    temporaryVariables.insert(instruction.substr(firstTemporaryPosition, nextPosition - firstTemporaryPosition));
+                }
+
+                firstTemporaryPosition = instruction.find('t', nextPosition);
+            }
+        }
+
+        return temporaryVariables;
+    };
+
+    std::cout << "Instruction Format Comparison:" << std::endl;
+    std::cout << "Format | Number of Instructions | Temporary Variables | Registers Used | Execution Steps" << std::endl;
+
+    std::set<std::string> threeAddressTemps = collectTemporaryVariables(threeAddressInstructions);
+    std::set<std::string> twoAddressTemps = collectTemporaryVariables(twoAddressInstructions);
+    std::set<std::string> oneAddressTemps = collectTemporaryVariables(oneAddressInstructions);
+    std::set<std::string> zeroAddressTemps = collectTemporaryVariables(zeroAddressInstructions);
+
+    std::cout << "Three Address | " << threeAddressInstructions.size() << " | ";
+    if (threeAddressTemps.empty()) {
+        std::cout << "None";
+    } else {
+        bool first = true;
+        for (const std::string& temporaryVariable : threeAddressTemps) {
+            if (!first) {
+                std::cout << ", ";
+            }
+            std::cout << temporaryVariable;
+            first = false;
+        }
+    }
+    std::cout << " | None | " << threeAddressInstructions.size() << std::endl;
+
+    std::cout << "Two Address | " << twoAddressInstructions.size() << " | ";
+    if (twoAddressTemps.empty()) {
+        std::cout << "None";
+    } else {
+        bool first = true;
+        for (const std::string& temporaryVariable : twoAddressTemps) {
+            if (!first) {
+                std::cout << ", ";
+            }
+            std::cout << temporaryVariable;
+            first = false;
+        }
+    }
+    std::cout << " | R1 | " << twoAddressInstructions.size() << std::endl;
+
+    std::cout << "One Address | " << oneAddressInstructions.size() << " | ";
+    if (oneAddressTemps.empty()) {
+        std::cout << "None";
+    } else {
+        bool first = true;
+        for (const std::string& temporaryVariable : oneAddressTemps) {
+            if (!first) {
+                std::cout << ", ";
+            }
+            std::cout << temporaryVariable;
+            first = false;
+        }
+    }
+    std::cout << " | AC | " << oneAddressInstructions.size() << std::endl;
+
+    std::cout << "Zero Address | " << zeroAddressInstructions.size() << " | ";
+    if (zeroAddressTemps.empty()) {
+        std::cout << "None";
+    } else {
+        bool first = true;
+        for (const std::string& temporaryVariable : zeroAddressTemps) {
+            if (!first) {
+                std::cout << ", ";
+            }
+            std::cout << temporaryVariable;
+            first = false;
+        }
+    }
+    std::cout << " | Stack | " << zeroAddressInstructions.size() << std::endl;
 
     return 0;
 }
