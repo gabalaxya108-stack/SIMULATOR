@@ -1,8 +1,18 @@
 #pragma once
 
-// Generates instructions from converted expressions.
-// Implementation will be added later.
+#include <string>
+#include <vector>
+
+// Generates three-address code instructions from postfix expressions.
 class InstructionGenerator {
 public:
-    InstructionGenerator() = default;
+    // Converts a postfix expression into a list of three-address code statements.
+    static std::vector<std::string> generateThreeAddressCode(const std::string& postfixExpression);
+
+private:
+    // Returns true when the character is one of the supported arithmetic operators.
+    static bool isOperator(char character);
+
+    // Creates the next temporary variable name in sequence, such as t1, t2, and so on.
+    static std::string createTemporaryName(int temporaryIndex);
 };
