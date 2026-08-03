@@ -1,0 +1,47 @@
+:root {
+  --primary: #2563eb;
+  --primary-soft: #eff6ff;
+  --text: #0f172a;
+  --muted: #64748b;
+}
+
+body {
+  background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
+  color: var(--text);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.card-header {
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%) !important;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn-outline-primary {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.form-control-lg {
+  min-height: 120px;
+}
+
+.alert-success {
+  background-color: #ecfdf3;
+  color: #166534;
+  border-color: #a7f3d0;
+}
+
+.alert-danger {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.accordion-button:not(.collapsed) {
+  background-color: var(--primary-soft);
+  color: var(--primary);
+}
