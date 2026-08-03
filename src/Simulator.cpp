@@ -77,6 +77,32 @@ void printOneAddressState(int accumulatorValue, const std::vector<std::pair<std:
 	std::cout << std::endl;
 }
 
+// Prints the current stack and temporary state after each zero-address instruction.
+void printZeroAddressState(const std::vector<int>& stackValues, const std::vector<std::pair<std::string, int>>& values) {
+	std::cout << "Current Stack: [";
+
+	for (std::size_t index = 0; index < stackValues.size(); ++index) {
+		std::cout << stackValues[index];
+		if (index + 1 < stackValues.size()) {
+			std::cout << " ";
+		}
+	}
+
+	std::cout << "]";
+
+	if (!values.empty()) {
+		std::cout << " | Temps: ";
+		for (std::size_t index = 0; index < values.size(); ++index) {
+			std::cout << values[index].first << '=' << values[index].second;
+			if (index + 1 < values.size()) {
+				std::cout << " ";
+			}
+		}
+	}
+
+	std::cout << std::endl;
+}
+
 // Resolves a token for the two-address simulator.
 int resolveTwoAddressToken(const std::string& token, int registerValue, const std::vector<std::pair<std::string, int>>& values) {
 	if (token == "R1") {
@@ -110,6 +136,21 @@ int resolveOneAddressToken(const std::string& token, int accumulatorValue, const
 		return (token[0] - 'a') + 1;
 	}
 
+	return 0;
+}
+
+// Resolves a token for the zero-address simulator.
+int resolveZeroAddressToken(const std::string& token, const std::vector<int>& stackValues, const std::vector<std::pair<std::string, int>>& values) {
+	if (token.size() == 1 && token[0] >= 'a' && token[0] <= 'z') {
+		return (token[0] - 'a') + 1;
+	}
+
+	int storedValue = 0;
+	if (findValue(values, token, storedValue)) {
+		return storedValue;
+	}
+
+	(void)stackValues;
 	return 0;
 }
 
@@ -291,5 +332,66 @@ void Simulator::simulateOneAddressCode(const std::vector<std::string>& instructi
 
 		std::cout << instruction << std::endl;
 		printOneAddressState(accumulatorValue, values);
+	}
+}
+
+void Simulator::simulateZeroAddressCode(const std::vector<std::string>& instructions) {
+	std::vector<std::pair<std::string, int>> values;
+	std::vector<int> stackValues;
+
+	std::cout << "Zero Address Simulation:" << std::endl;
+
+	for (const std::string& instruction : instructions) {
+		std::istringstream stream(instruction);
+		std::string operation;
+		std::string operand;
+
+		stream >> operation;
+
+		if (operation == "PUSH") {
+			stream >> operand;
+			stackValues.push_back(resolveZeroAddressToken(operand, stackValues, values));
+		} else if (operation == "POP") {
+			stream >> operand;
+			if (!stackValues.empty()) {
+				int topValue = stackValues.back();
+				stackValues.pop_back();
+				setValue(values, operand, topValue);
+			}
+		} else if (operation == "ADD" || operation == "SUB" || operation == "MUL" || operation == "DIV") {
+			if (stackValues.size() < 2) {
+				continue;
+			}
+
+			int rightOperand = stackValues.back();
+			stackValues.pop_back();
+			int leftOperand = stackValues.back();
+			stackValues.pop_back();
+
+			int resultValue = 0;
+			switch (operation[0]) {
+			case 'A':
+				resultValue = leftOperand + rightOperand;
+				break;
+			case 'S':
+				resultValue = leftOperand - rightOperand;
+				break;
+			case 'M':
+				resultValue = leftOperand * rightOperand;
+				break;
+			case 'D':
+				resultValue = rightOperand == 0 ? 0 : leftOperand / rightOperand;
+				break;
+			default:
+				break;
+			}
+
+			stackValues.push_back(resultValue);
+		} else {
+			continue;
+		}
+
+		std::cout << instruction << std::endl;
+		printZeroAddressState(stackValues, values);
 	}
 }

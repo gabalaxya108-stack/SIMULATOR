@@ -55,5 +55,7 @@ int main() {
         std::cout << instruction << std::endl;
     }
 
+    Simulator::simulateZeroAddressCode(zeroAddressInstructions);
+
     return 0;
 }
