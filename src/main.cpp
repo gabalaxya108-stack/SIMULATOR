@@ -1,5 +1,7 @@
 #include <iostream>
+#include <cstdlib>
 #include <set>
+#include <iomanip>
 #include <string>
 #include <vector>
 
@@ -7,6 +9,125 @@
 #include "ExpressionValidator.h"
 #include "InstructionGenerator.h"
 #include "Simulator.h"
+
+namespace {
+
+// Returns true when color accents should be enabled for table headers.
+bool useColorOutput() {
+    return std::getenv("NO_COLOR") == nullptr;
+}
+
+const char* accent() {
+    return useColorOutput() ? "\033[35m" : "";
+}
+
+const char* reset() {
+    return useColorOutput() ? "\033[0m" : "";
+}
+
+// Prints a table separator line.
+void printSeparator(const std::vector<std::size_t>& widths) {
+    std::cout << "+";
+    for (std::size_t width : widths) {
+        std::cout << std::string(width + 2, '-') << "+";
+    }
+    std::cout << std::endl;
+}
+
+// Prints one table row using fixed widths.
+void printRow(const std::vector<std::string>& cells, const std::vector<std::size_t>& widths) {
+    std::cout << "|";
+    for (std::size_t index = 0; index < cells.size(); ++index) {
+        std::cout << ' ' << std::left << std::setw(static_cast<int>(widths[index])) << cells[index] << " |";
+    }
+    std::cout << std::endl;
+}
+
+// Prints a section title with a subtle accent when supported.
+void printSectionTitle(const std::string& title) {
+    std::cout << accent() << title << reset() << std::endl;
+}
+
+// Prints a table for a list of instructions.
+void printInstructionTable(const std::string& title, const std::vector<std::string>& instructions) {
+    printSectionTitle(title);
+    std::vector<std::size_t> widths = {6, 18};
+    printSeparator(widths);
+    printRow({"#", "Instruction"}, widths);
+    printSeparator(widths);
+
+    for (std::size_t index = 0; index < instructions.size(); ++index) {
+        printRow({std::to_string(index + 1), instructions[index]}, widths);
+    }
+
+    printSeparator(widths);
+}
+
+// Extracts temporary variable names from an instruction list.
+std::set<std::string> collectTemporaryVariables(const std::vector<std::string>& instructions) {
+    std::set<std::string> temporaryVariables;
+
+    for (const std::string& instruction : instructions) {
+        std::size_t firstTemporaryPosition = instruction.find('t');
+        while (firstTemporaryPosition != std::string::npos) {
+            std::size_t nextPosition = firstTemporaryPosition + 1;
+            while (nextPosition < instruction.size() && instruction[nextPosition] >= '0' && instruction[nextPosition] <= '9') {
+                ++nextPosition;
+            }
+
+            if (nextPosition > firstTemporaryPosition + 1) {
+                temporaryVariables.insert(instruction.substr(firstTemporaryPosition, nextPosition - firstTemporaryPosition));
+            }
+
+            firstTemporaryPosition = instruction.find('t', nextPosition);
+        }
+    }
+
+    return temporaryVariables;
+}
+
+// Prints a comparison table for all formats.
+void printComparisonTable(
+    std::size_t threeAddressCount,
+    const std::set<std::string>& threeAddressTemps,
+    std::size_t twoAddressCount,
+    const std::set<std::string>& twoAddressTemps,
+    std::size_t oneAddressCount,
+    const std::set<std::string>& oneAddressTemps,
+    std::size_t zeroAddressCount,
+    const std::set<std::string>& zeroAddressTemps) {
+    printSectionTitle("Instruction Format Comparison");
+
+    std::vector<std::size_t> widths = {14, 6, 18, 10, 8};
+    printSeparator(widths);
+    printRow({"Format", "Count", "Temporary Vars", "Registers", "Steps"}, widths);
+    printSeparator(widths);
+
+    auto renderTemporaryList = [](const std::set<std::string>& temporaries) {
+        if (temporaries.empty()) {
+            return std::string("None");
+        }
+
+        std::string rendered;
+        bool first = true;
+        for (const std::string& temporaryVariable : temporaries) {
+            if (!first) {
+                rendered += ", ";
+            }
+            rendered += temporaryVariable;
+            first = false;
+        }
+        return rendered;
+    };
+
+    printRow({"Three Addr", std::to_string(threeAddressCount), renderTemporaryList(threeAddressTemps), "None", std::to_string(threeAddressCount)}, widths);
+    printRow({"Two Addr", std::to_string(twoAddressCount), renderTemporaryList(twoAddressTemps), "R1", std::to_string(twoAddressCount)}, widths);
+    printRow({"One Addr", std::to_string(oneAddressCount), renderTemporaryList(oneAddressTemps), "AC", std::to_string(oneAddressCount)}, widths);
+    printRow({"Zero Addr", std::to_string(zeroAddressCount), renderTemporaryList(zeroAddressTemps), "Stack", std::to_string(zeroAddressCount)}, widths);
+    printSeparator(widths);
+}
+
+} // namespace
 
 // Entry point for the console application.
 // Reads one infix expression, validates it, and prints postfix, three-address code, two-address code, one-address code, zero-address code, and simulation output.
@@ -21,132 +142,42 @@ int main() {
         return 1;
     }
 
-    std::cout << "Original Expression: " << expression << std::endl;
-
     std::string postfixExpression = ExpressionConverter::toPostfix(expression);
-    std::cout << "Postfix Expression: " << postfixExpression << std::endl;
+    printSectionTitle("Expression Summary");
+    printSeparator({20, 22});
+    printRow({"Original", expression}, {20, 22});
+    printRow({"Postfix", postfixExpression}, {20, 22});
+    printSeparator({20, 22});
 
     std::vector<std::string> threeAddressInstructions = InstructionGenerator::generateThreeAddressCode(postfixExpression);
-    std::cout << "Three Address Code:" << std::endl;
-    for (const std::string& instruction : threeAddressInstructions) {
-        std::cout << instruction << std::endl;
-    }
+    printInstructionTable("Three Address Code", threeAddressInstructions);
 
     Simulator::simulateThreeAddressCode(threeAddressInstructions);
 
     std::vector<std::string> twoAddressInstructions = InstructionGenerator::generateTwoAddressCode(postfixExpression);
-    std::cout << "Two Address Code:" << std::endl;
-    for (const std::string& instruction : twoAddressInstructions) {
-        std::cout << instruction << std::endl;
-    }
+    printInstructionTable("Two Address Code", twoAddressInstructions);
 
     Simulator::simulateTwoAddressCode(twoAddressInstructions);
 
     std::vector<std::string> oneAddressInstructions = InstructionGenerator::generateOneAddressCode(postfixExpression);
-    std::cout << "One Address Code:" << std::endl;
-    for (const std::string& instruction : oneAddressInstructions) {
-        std::cout << instruction << std::endl;
-    }
+    printInstructionTable("One Address Code", oneAddressInstructions);
 
     Simulator::simulateOneAddressCode(oneAddressInstructions);
 
     std::vector<std::string> zeroAddressInstructions = InstructionGenerator::generateZeroAddressCode(postfixExpression);
-    std::cout << "Zero Address Code:" << std::endl;
-    for (const std::string& instruction : zeroAddressInstructions) {
-        std::cout << instruction << std::endl;
-    }
+    printInstructionTable("Zero Address Code", zeroAddressInstructions);
 
     Simulator::simulateZeroAddressCode(zeroAddressInstructions);
 
-    auto collectTemporaryVariables = [](const std::vector<std::string>& instructions) {
-        std::set<std::string> temporaryVariables;
-
-        for (const std::string& instruction : instructions) {
-            std::size_t firstTemporaryPosition = instruction.find('t');
-            while (firstTemporaryPosition != std::string::npos) {
-                std::size_t nextPosition = firstTemporaryPosition + 1;
-                while (nextPosition < instruction.size() && instruction[nextPosition] >= '0' && instruction[nextPosition] <= '9') {
-                    ++nextPosition;
-                }
-
-                if (nextPosition > firstTemporaryPosition + 1) {
-                    temporaryVariables.insert(instruction.substr(firstTemporaryPosition, nextPosition - firstTemporaryPosition));
-                }
-
-                firstTemporaryPosition = instruction.find('t', nextPosition);
-            }
-        }
-
-        return temporaryVariables;
-    };
-
-    std::cout << "Instruction Format Comparison:" << std::endl;
-    std::cout << "Format | Number of Instructions | Temporary Variables | Registers Used | Execution Steps" << std::endl;
-
-    std::set<std::string> threeAddressTemps = collectTemporaryVariables(threeAddressInstructions);
-    std::set<std::string> twoAddressTemps = collectTemporaryVariables(twoAddressInstructions);
-    std::set<std::string> oneAddressTemps = collectTemporaryVariables(oneAddressInstructions);
-    std::set<std::string> zeroAddressTemps = collectTemporaryVariables(zeroAddressInstructions);
-
-    std::cout << "Three Address | " << threeAddressInstructions.size() << " | ";
-    if (threeAddressTemps.empty()) {
-        std::cout << "None";
-    } else {
-        bool first = true;
-        for (const std::string& temporaryVariable : threeAddressTemps) {
-            if (!first) {
-                std::cout << ", ";
-            }
-            std::cout << temporaryVariable;
-            first = false;
-        }
-    }
-    std::cout << " | None | " << threeAddressInstructions.size() << std::endl;
-
-    std::cout << "Two Address | " << twoAddressInstructions.size() << " | ";
-    if (twoAddressTemps.empty()) {
-        std::cout << "None";
-    } else {
-        bool first = true;
-        for (const std::string& temporaryVariable : twoAddressTemps) {
-            if (!first) {
-                std::cout << ", ";
-            }
-            std::cout << temporaryVariable;
-            first = false;
-        }
-    }
-    std::cout << " | R1 | " << twoAddressInstructions.size() << std::endl;
-
-    std::cout << "One Address | " << oneAddressInstructions.size() << " | ";
-    if (oneAddressTemps.empty()) {
-        std::cout << "None";
-    } else {
-        bool first = true;
-        for (const std::string& temporaryVariable : oneAddressTemps) {
-            if (!first) {
-                std::cout << ", ";
-            }
-            std::cout << temporaryVariable;
-            first = false;
-        }
-    }
-    std::cout << " | AC | " << oneAddressInstructions.size() << std::endl;
-
-    std::cout << "Zero Address | " << zeroAddressInstructions.size() << " | ";
-    if (zeroAddressTemps.empty()) {
-        std::cout << "None";
-    } else {
-        bool first = true;
-        for (const std::string& temporaryVariable : zeroAddressTemps) {
-            if (!first) {
-                std::cout << ", ";
-            }
-            std::cout << temporaryVariable;
-            first = false;
-        }
-    }
-    std::cout << " | Stack | " << zeroAddressInstructions.size() << std::endl;
+    printComparisonTable(
+        threeAddressInstructions.size(),
+        collectTemporaryVariables(threeAddressInstructions),
+        twoAddressInstructions.size(),
+        collectTemporaryVariables(twoAddressInstructions),
+        oneAddressInstructions.size(),
+        collectTemporaryVariables(oneAddressInstructions),
+        zeroAddressInstructions.size(),
+        collectTemporaryVariables(zeroAddressInstructions));
 
     return 0;
 }

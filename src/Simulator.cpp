@@ -1,9 +1,58 @@
 #include "Simulator.h"
 
+#include <cstdlib>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <string>
+#include <vector>
+#include <unistd.h>
 
 namespace {
+
+// Returns true when color output should be enabled for the current terminal.
+bool useColorOutput() {
+	return std::getenv("NO_COLOR") == nullptr && isatty(STDOUT_FILENO) != 0;
+}
+
+const char* colorCyan() {
+	return useColorOutput() ? "\033[36m" : "";
+}
+
+const char* colorGreen() {
+	return useColorOutput() ? "\033[32m" : "";
+}
+
+const char* colorYellow() {
+	return useColorOutput() ? "\033[33m" : "";
+}
+
+const char* colorReset() {
+	return useColorOutput() ? "\033[0m" : "";
+}
+
+// Prints a single table row with fixed column widths.
+void printTableRow(const std::vector<std::string>& cells, const std::vector<std::size_t>& widths) {
+	std::cout << "|";
+	for (std::size_t index = 0; index < cells.size(); ++index) {
+		std::cout << ' ' << std::left << std::setw(static_cast<int>(widths[index])) << cells[index] << " |";
+	}
+	std::cout << std::endl;
+}
+
+// Prints a separator row for a table.
+void printTableSeparator(const std::vector<std::size_t>& widths) {
+	std::cout << "+";
+	for (std::size_t width : widths) {
+		std::cout << std::string(width + 2, '-') << "+";
+	}
+	std::cout << std::endl;
+}
+
+// Prints a titled table.
+void printTableTitle(const std::string& title) {
+	std::cout << colorCyan() << title << colorReset() << std::endl;
+}
 
 // Finds a stored value by name in the simulation state.
 bool findValue(const std::vector<std::pair<std::string, int>>& values, const std::string& name, int& outValue) {
@@ -29,78 +78,69 @@ void setValue(std::vector<std::pair<std::string, int>>& values, const std::strin
 	values.emplace_back(name, value);
 }
 
-// Prints the current state after each instruction.
+// Prints the current state after each instruction as a table.
 void printState(const std::vector<std::pair<std::string, int>>& values) {
-	std::cout << "Current Values: ";
-
-	for (std::size_t index = 0; index < values.size(); ++index) {
-		std::cout << values[index].first << '=' << values[index].second;
-		if (index + 1 < values.size()) {
-			std::cout << " ";
-		}
+	std::vector<std::size_t> widths = {12, 10};
+	printTableSeparator(widths);
+	printTableRow({"Variable", "Value"}, widths);
+	printTableSeparator(widths);
+	for (const auto& entry : values) {
+		printTableRow({entry.first, std::to_string(entry.second)}, widths);
 	}
-
-	std::cout << std::endl;
+	printTableSeparator(widths);
 }
 
-// Prints the current register and temporary state after each two-address instruction.
+// Prints the current register and temporary state after each two-address instruction as a table.
 void printTwoAddressState(int registerValue, const std::vector<std::pair<std::string, int>>& values) {
-	std::cout << "Current R1: " << registerValue;
-
-	if (!values.empty()) {
-		std::cout << " | Temps: ";
-		for (std::size_t index = 0; index < values.size(); ++index) {
-			std::cout << values[index].first << '=' << values[index].second;
-			if (index + 1 < values.size()) {
-				std::cout << " ";
-			}
-		}
+	std::vector<std::size_t> widths = {10, 8};
+	printTableSeparator(widths);
+	printTableRow({"Register", "Value"}, widths);
+	printTableSeparator(widths);
+	printTableRow({"R1", std::to_string(registerValue)}, widths);
+	printTableSeparator(widths);
+	for (const auto& entry : values) {
+		printTableRow({entry.first, std::to_string(entry.second)}, widths);
 	}
-
-	std::cout << std::endl;
+	if (!values.empty()) {
+		printTableSeparator(widths);
+	}
 }
 
-// Prints the current accumulator and temporary state after each one-address instruction.
+// Prints the current accumulator and temporary state after each one-address instruction as a table.
 void printOneAddressState(int accumulatorValue, const std::vector<std::pair<std::string, int>>& values) {
-	std::cout << "Current AC: " << accumulatorValue;
-
-	if (!values.empty()) {
-		std::cout << " | Temps: ";
-		for (std::size_t index = 0; index < values.size(); ++index) {
-			std::cout << values[index].first << '=' << values[index].second;
-			if (index + 1 < values.size()) {
-				std::cout << " ";
-			}
-		}
+	std::vector<std::size_t> widths = {10, 8};
+	printTableSeparator(widths);
+	printTableRow({"Register", "Value"}, widths);
+	printTableSeparator(widths);
+	printTableRow({"AC", std::to_string(accumulatorValue)}, widths);
+	printTableSeparator(widths);
+	for (const auto& entry : values) {
+		printTableRow({entry.first, std::to_string(entry.second)}, widths);
 	}
-
-	std::cout << std::endl;
+	if (!values.empty()) {
+		printTableSeparator(widths);
+	}
 }
 
-// Prints the current stack and temporary state after each zero-address instruction.
+// Prints the current stack and temporary state after each zero-address instruction as a table.
 void printZeroAddressState(const std::vector<int>& stackValues, const std::vector<std::pair<std::string, int>>& values) {
-	std::cout << "Current Stack: [";
-
+	std::vector<std::size_t> widths = {12, 16};
+	printTableSeparator(widths);
+	printTableRow({"Stack Position", "Value"}, widths);
+	printTableSeparator(widths);
 	for (std::size_t index = 0; index < stackValues.size(); ++index) {
-		std::cout << stackValues[index];
-		if (index + 1 < stackValues.size()) {
-			std::cout << " ";
-		}
+		printTableRow({"S" + std::to_string(index), std::to_string(stackValues[index])}, widths);
 	}
-
-	std::cout << "]";
-
+	if (stackValues.empty()) {
+		printTableRow({"(empty)", "-"}, widths);
+	}
+	printTableSeparator(widths);
+	for (const auto& entry : values) {
+		printTableRow({entry.first, std::to_string(entry.second)}, widths);
+	}
 	if (!values.empty()) {
-		std::cout << " | Temps: ";
-		for (std::size_t index = 0; index < values.size(); ++index) {
-			std::cout << values[index].first << '=' << values[index].second;
-			if (index + 1 < values.size()) {
-				std::cout << " ";
-			}
-		}
+		printTableSeparator(widths);
 	}
-
-	std::cout << std::endl;
 }
 
 // Resolves a token for the two-address simulator.
@@ -195,7 +235,7 @@ int Simulator::applyOperation(int leftOperand, int rightOperand, char operation)
 void Simulator::simulateThreeAddressCode(const std::vector<std::string>& instructions) {
 	std::vector<std::pair<std::string, int>> values;
 
-	std::cout << "Three Address Simulation:" << std::endl;
+	printTableTitle("Three Address Simulation");
 
 	for (const std::string& instruction : instructions) {
 		std::size_t equalsPosition = instruction.find('=');
@@ -220,8 +260,10 @@ void Simulator::simulateThreeAddressCode(const std::vector<std::string>& instruc
 
 		setValue(values, destination, resultValue);
 
-		std::cout << instruction << std::endl;
-		std::cout << "  " << destination << " = " << resultValue << std::endl;
+		printTableSeparator({18, 14});
+		printTableRow({"Instruction", "Result"}, {18, 14});
+		printTableSeparator({18, 14});
+		printTableRow({instruction, destination + " = " + std::to_string(resultValue)}, {18, 14});
 		printState(values);
 	}
 }
@@ -230,7 +272,7 @@ void Simulator::simulateTwoAddressCode(const std::vector<std::string>& instructi
 	std::vector<std::pair<std::string, int>> values;
 	int registerValue = 0;
 
-	std::cout << "Two Address Simulation:" << std::endl;
+	printTableTitle("Two Address Simulation");
 
 	for (const std::string& instruction : instructions) {
 		std::istringstream stream(instruction);
@@ -285,7 +327,10 @@ void Simulator::simulateTwoAddressCode(const std::vector<std::string>& instructi
 			continue;
 		}
 
-		std::cout << instruction << std::endl;
+		printTableSeparator({18, 14});
+		printTableRow({"Instruction", "Result"}, {18, 14});
+		printTableSeparator({18, 14});
+		printTableRow({instruction, "R1 = " + std::to_string(registerValue)}, {18, 14});
 		printTwoAddressState(registerValue, values);
 	}
 }
@@ -294,7 +339,7 @@ void Simulator::simulateOneAddressCode(const std::vector<std::string>& instructi
 	std::vector<std::pair<std::string, int>> values;
 	int accumulatorValue = 0;
 
-	std::cout << "One Address Simulation:" << std::endl;
+	printTableTitle("One Address Simulation");
 
 	for (const std::string& instruction : instructions) {
 		std::istringstream stream(instruction);
@@ -330,7 +375,10 @@ void Simulator::simulateOneAddressCode(const std::vector<std::string>& instructi
 			continue;
 		}
 
-		std::cout << instruction << std::endl;
+		printTableSeparator({18, 14});
+		printTableRow({"Instruction", "Result"}, {18, 14});
+		printTableSeparator({18, 14});
+		printTableRow({instruction, "AC = " + std::to_string(accumulatorValue)}, {18, 14});
 		printOneAddressState(accumulatorValue, values);
 	}
 }
@@ -339,7 +387,7 @@ void Simulator::simulateZeroAddressCode(const std::vector<std::string>& instruct
 	std::vector<std::pair<std::string, int>> values;
 	std::vector<int> stackValues;
 
-	std::cout << "Zero Address Simulation:" << std::endl;
+	printTableTitle("Zero Address Simulation");
 
 	for (const std::string& instruction : instructions) {
 		std::istringstream stream(instruction);
@@ -391,7 +439,10 @@ void Simulator::simulateZeroAddressCode(const std::vector<std::string>& instruct
 			continue;
 		}
 
-		std::cout << instruction << std::endl;
+		printTableSeparator({18, 14});
+		printTableRow({"Instruction", "Result"}, {18, 14});
+		printTableSeparator({18, 14});
+		printTableRow({instruction, "Stack updated"}, {18, 14});
 		printZeroAddressState(stackValues, values);
 	}
 }
