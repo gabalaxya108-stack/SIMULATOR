@@ -15,6 +15,9 @@ public:
     // Converts a postfix expression into a list of one-address accumulator instructions.
     static std::vector<std::string> generateOneAddressCode(const std::string& postfixExpression);
 
+    // Converts a postfix expression into a list of zero-address stack instructions.
+    static std::vector<std::string> generateZeroAddressCode(const std::string& postfixExpression);
+
 private:
     // Returns true when the character is one of the supported arithmetic operators.
     static bool isOperator(char character);

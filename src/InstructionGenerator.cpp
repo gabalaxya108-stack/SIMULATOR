@@ -116,3 +116,22 @@ std::vector<std::string> InstructionGenerator::generateOneAddressCode(const std:
 
 	return instructions;
 }
+
+std::vector<std::string> InstructionGenerator::generateZeroAddressCode(const std::string& postfixExpression) {
+	std::vector<std::string> instructions;
+	int temporaryIndex = 1;
+
+	// Translate postfix tokens directly into stack-machine instructions.
+	for (char character : postfixExpression) {
+		if (character >= 'a' && character <= 'z') {
+			instructions.push_back("PUSH " + std::string(1, character));
+		} else if (isOperator(character)) {
+			instructions.push_back(instructionMnemonic(character));
+		}
+	}
+
+	// Store the final stack result in a temporary so the output is explicit.
+	instructions.push_back("POP " + createTemporaryName(temporaryIndex));
+
+	return instructions;
+}

@@ -7,7 +7,7 @@
 #include "InstructionGenerator.h"
 
 // Entry point for the console application.
-// Reads one infix expression, validates it, and prints postfix, three-address code, two-address code, and one-address code output.
+// Reads one infix expression, validates it, and prints postfix, three-address code, two-address code, one-address code, and zero-address code output.
 int main() {
     std::string expression;
 
@@ -39,6 +39,12 @@ int main() {
     std::vector<std::string> oneAddressInstructions = InstructionGenerator::generateOneAddressCode(postfixExpression);
     std::cout << "One Address Code:" << std::endl;
     for (const std::string& instruction : oneAddressInstructions) {
+        std::cout << instruction << std::endl;
+    }
+
+    std::vector<std::string> zeroAddressInstructions = InstructionGenerator::generateZeroAddressCode(postfixExpression);
+    std::cout << "Zero Address Code:" << std::endl;
+    for (const std::string& instruction : zeroAddressInstructions) {
         std::cout << instruction << std::endl;
     }
 
