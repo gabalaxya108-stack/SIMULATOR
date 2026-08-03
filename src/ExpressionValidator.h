@@ -1,8 +1,13 @@
 #pragma once
 
-// Validates arithmetic expressions.
-// Implementation will be added later.
+#include <string>
+
+// Validates arithmetic expressions before later processing stages.
 class ExpressionValidator {
 public:
-    ExpressionValidator() = default;
+    static bool isValidExpression(const std::string& expression);
+
+private:
+    static bool isOperand(char character);
+    static bool isOperator(char character);
 };
