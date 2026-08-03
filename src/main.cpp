@@ -8,7 +8,7 @@
 #include "Simulator.h"
 
 // Entry point for the console application.
-// Reads one infix expression, validates it, and prints postfix, three-address code, two-address code, one-address code, and zero-address code output.
+// Reads one infix expression, validates it, and prints postfix, three-address code, two-address code, one-address code, zero-address code, and simulation output.
 int main() {
     std::string expression;
 
@@ -46,6 +46,8 @@ int main() {
     for (const std::string& instruction : oneAddressInstructions) {
         std::cout << instruction << std::endl;
     }
+
+    Simulator::simulateOneAddressCode(oneAddressInstructions);
 
     std::vector<std::string> zeroAddressInstructions = InstructionGenerator::generateZeroAddressCode(postfixExpression);
     std::cout << "Zero Address Code:" << std::endl;

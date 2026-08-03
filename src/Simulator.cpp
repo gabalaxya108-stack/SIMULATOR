@@ -60,10 +60,45 @@ void printTwoAddressState(int registerValue, const std::vector<std::pair<std::st
 	std::cout << std::endl;
 }
 
+// Prints the current accumulator and temporary state after each one-address instruction.
+void printOneAddressState(int accumulatorValue, const std::vector<std::pair<std::string, int>>& values) {
+	std::cout << "Current AC: " << accumulatorValue;
+
+	if (!values.empty()) {
+		std::cout << " | Temps: ";
+		for (std::size_t index = 0; index < values.size(); ++index) {
+			std::cout << values[index].first << '=' << values[index].second;
+			if (index + 1 < values.size()) {
+				std::cout << " ";
+			}
+		}
+	}
+
+	std::cout << std::endl;
+}
+
 // Resolves a token for the two-address simulator.
 int resolveTwoAddressToken(const std::string& token, int registerValue, const std::vector<std::pair<std::string, int>>& values) {
 	if (token == "R1") {
 		return registerValue;
+	}
+
+	int storedValue = 0;
+	if (findValue(values, token, storedValue)) {
+		return storedValue;
+	}
+
+	if (token.size() == 1 && token[0] >= 'a' && token[0] <= 'z') {
+		return (token[0] - 'a') + 1;
+	}
+
+	return 0;
+}
+
+// Resolves a token for the one-address simulator.
+int resolveOneAddressToken(const std::string& token, int accumulatorValue, const std::vector<std::pair<std::string, int>>& values) {
+	if (token == "AC") {
+		return accumulatorValue;
 	}
 
 	int storedValue = 0;
@@ -211,5 +246,50 @@ void Simulator::simulateTwoAddressCode(const std::vector<std::string>& instructi
 
 		std::cout << instruction << std::endl;
 		printTwoAddressState(registerValue, values);
+	}
+}
+
+void Simulator::simulateOneAddressCode(const std::vector<std::string>& instructions) {
+	std::vector<std::pair<std::string, int>> values;
+	int accumulatorValue = 0;
+
+	std::cout << "One Address Simulation:" << std::endl;
+
+	for (const std::string& instruction : instructions) {
+		std::istringstream stream(instruction);
+		std::string operation;
+		std::string operand;
+
+		stream >> operation >> operand;
+
+		if (operation == "LOAD") {
+			accumulatorValue = resolveOneAddressToken(operand, accumulatorValue, values);
+		} else if (operation == "ADD" || operation == "SUB" || operation == "MUL" || operation == "DIV") {
+			int operandValue = resolveOneAddressToken(operand, accumulatorValue, values);
+
+			switch (operation[0]) {
+			case 'A':
+				accumulatorValue += operandValue;
+				break;
+			case 'S':
+				accumulatorValue -= operandValue;
+				break;
+			case 'M':
+				accumulatorValue *= operandValue;
+				break;
+			case 'D':
+				accumulatorValue = operandValue == 0 ? 0 : accumulatorValue / operandValue;
+				break;
+			default:
+				break;
+			}
+		} else if (operation == "STORE") {
+			setValue(values, operand, accumulatorValue);
+		} else {
+			continue;
+		}
+
+		std::cout << instruction << std::endl;
+		printOneAddressState(accumulatorValue, values);
 	}
 }
